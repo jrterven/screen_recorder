@@ -194,7 +194,7 @@ function App() {
       const screenHeight = screenSettings.height || 1080
 
       let finalVideoStream = displayStream
-      let animationFrameId = null
+      let drawIntervalId = null
 
       // If camera is enabled and NOT separate recording, composite screen + camera using canvas
       if (cameraEnabled && cameraStream && !separateCameraRecording) {
@@ -257,7 +257,8 @@ function App() {
           }
         }
 
-        // Draw composite frame
+        // Draw composite frame (using setInterval instead of requestAnimationFrame
+        // because requestAnimationFrame pauses when tab loses focus)
         const drawFrame = () => {
           ctx.drawImage(screenVideo, 0, 0, screenWidth, screenHeight)
           
@@ -300,12 +301,10 @@ function App() {
           ctx.quadraticCurveTo(pos.x, pos.y, pos.x + radius, pos.y)
           ctx.closePath()
           ctx.stroke()
-
-          animationFrameId = requestAnimationFrame(drawFrame)
         }
 
-        // Start drawing
-        drawFrame()
+        // Start drawing at 30fps using setInterval (works in background)
+        drawIntervalId = setInterval(drawFrame, 1000 / 30)
 
         // Get canvas stream
         finalVideoStream = canvas.captureStream(30)
@@ -399,9 +398,9 @@ function App() {
       }
 
       mediaRecorder.onstop = () => {
-        // Cancel animation frame if camera was enabled
-        if (animationFrameId) {
-          cancelAnimationFrame(animationFrameId)
+        // Clear drawing interval if camera was enabled
+        if (drawIntervalId) {
+          clearInterval(drawIntervalId)
         }
 
         const mimeType = mediaRecorder.mimeType
