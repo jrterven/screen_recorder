@@ -316,12 +316,39 @@ function App() {
       }
 
       let combinedStream = finalVideoStream
+      let micAudioStream = null
 
-      // Start separate camera recording if enabled
+      // Get microphone audio if enabled (used for both screen and camera recordings)
+      if (micEnabled && selectedMic) {
+        try {
+          micAudioStream = await navigator.mediaDevices.getUserMedia({
+            audio: {
+              deviceId: { exact: selectedMic },
+              echoCancellation: true,
+              noiseSuppression: true,
+              sampleRate: 48000
+            }
+          })
+        } catch (audioErr) {
+          console.error('Error getting microphone:', audioErr)
+        }
+      }
+
+      // Start separate camera recording if enabled (with audio)
       if (cameraEnabled && cameraStream && separateCameraRecording) {
         cameraChunksRef.current = []
         const cameraMimeType = getSupportedMimeType()
-        const cameraRecorder = new MediaRecorder(cameraStream, {
+        
+        // Combine camera video with microphone audio
+        let cameraWithAudio = cameraStream
+        if (micAudioStream) {
+          cameraWithAudio = new MediaStream([
+            ...cameraStream.getVideoTracks(),
+            ...micAudioStream.getAudioTracks()
+          ])
+        }
+        
+        const cameraRecorder = new MediaRecorder(cameraWithAudio, {
           mimeType: cameraMimeType,
           videoBitsPerSecond: 4000000 // 4 Mbps for camera
         })
@@ -344,18 +371,9 @@ function App() {
         cameraRecorder.start(1000)
       }
 
-      // Add microphone audio if enabled
-      if (micEnabled && selectedMic) {
+      // Add microphone audio to screen recording if enabled
+      if (micAudioStream) {
         try {
-          const audioStream = await navigator.mediaDevices.getUserMedia({
-            audio: {
-              deviceId: { exact: selectedMic },
-              echoCancellation: true,
-              noiseSuppression: true,
-              sampleRate: 48000
-            }
-          })
-
           // Combine screen (with system audio) and microphone
           const audioContext = new AudioContext()
           const destination = audioContext.createMediaStreamDestination()
@@ -367,7 +385,7 @@ function App() {
           })
 
           // Add microphone audio
-          const micSource = audioContext.createMediaStreamSource(audioStream)
+          const micSource = audioContext.createMediaStreamSource(micAudioStream)
           micSource.connect(destination)
 
           // Combine video with mixed audio
@@ -631,6 +649,32 @@ function App() {
         {/* Main Content */}
         <div className="bg-slate-800/50 backdrop-blur rounded-2xl p-6 shadow-2xl border border-slate-700">
           {/* Preview Area */}
+          {/* Show side-by-side when both screen and camera recordings exist */}
+          {recordedUrl && cameraRecordedUrl && !isRecording ? (
+            <div className="grid grid-cols-2 gap-4 mb-6">
+              <div className="relative bg-black rounded-xl overflow-hidden aspect-video">
+                <video
+                  ref={recordedVideoRef}
+                  src={recordedUrl}
+                  controls
+                  className="w-full h-full object-contain"
+                />
+                <div className="absolute top-2 left-2 bg-blue-500/80 text-white text-xs px-2 py-1 rounded">
+                  Screen Recording
+                </div>
+              </div>
+              <div className="relative bg-black rounded-xl overflow-hidden aspect-video">
+                <video
+                  src={cameraRecordedUrl}
+                  controls
+                  className="w-full h-full object-contain"
+                />
+                <div className="absolute top-2 left-2 bg-purple-500/80 text-white text-xs px-2 py-1 rounded">
+                  Camera Recording
+                </div>
+              </div>
+            </div>
+          ) : (
           <div className="relative bg-black rounded-xl overflow-hidden mb-6 aspect-video">
             {isRecording ? (
               <video
@@ -703,6 +747,7 @@ function App() {
               </div>
             )}
           </div>
+          )}
 
           {/* Settings Panel */}
           <div className="bg-slate-900/50 rounded-xl p-4 mb-6">
