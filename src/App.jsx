@@ -73,8 +73,13 @@ function App() {
   const [cameraRecordedBlob, setCameraRecordedBlob] = useState(null)
   const [cameraRecordedUrl, setCameraRecordedUrl] = useState(null)
   const [isSyncPlaying, setIsSyncPlaying] = useState(false)
+  const [micLevel, setMicLevel] = useState(0)
+  const [micStream, setMicStream] = useState(null)
 
   const mediaRecorderRef = useRef(null)
+  const audioContextRef = useRef(null)
+  const analyserRef = useRef(null)
+  const micAnimationRef = useRef(null)
   const cameraRecorderRef = useRef(null)
   const chunksRef = useRef([])
   const cameraChunksRef = useRef([])
@@ -158,6 +163,67 @@ function App() {
       cameraPreviewRef.current.srcObject = cameraStream
     }
   }, [cameraStream, isRecording])
+
+  // Microphone level monitoring
+  useEffect(() => {
+    async function startMicMonitoring() {
+      if (micEnabled && selectedMic && !isRecording) {
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia({
+            audio: { deviceId: { exact: selectedMic } }
+          })
+          setMicStream(stream)
+          
+          const audioContext = new AudioContext()
+          const analyser = audioContext.createAnalyser()
+          analyser.fftSize = 256
+          
+          const source = audioContext.createMediaStreamSource(stream)
+          source.connect(analyser)
+          
+          audioContextRef.current = audioContext
+          analyserRef.current = analyser
+          
+          const dataArray = new Uint8Array(analyser.frequencyBinCount)
+          
+          const updateLevel = () => {
+            if (!analyserRef.current) return
+            analyserRef.current.getByteFrequencyData(dataArray)
+            const average = dataArray.reduce((a, b) => a + b) / dataArray.length
+            setMicLevel(average / 255) // Normalize to 0-1
+            micAnimationRef.current = requestAnimationFrame(updateLevel)
+          }
+          updateLevel()
+        } catch (err) {
+          console.error('Error monitoring mic:', err)
+        }
+      } else {
+        // Cleanup
+        if (micAnimationRef.current) {
+          cancelAnimationFrame(micAnimationRef.current)
+        }
+        if (audioContextRef.current) {
+          audioContextRef.current.close()
+          audioContextRef.current = null
+        }
+        if (micStream) {
+          micStream.getTracks().forEach(track => track.stop())
+          setMicStream(null)
+        }
+        setMicLevel(0)
+      }
+    }
+    startMicMonitoring()
+    
+    return () => {
+      if (micAnimationRef.current) {
+        cancelAnimationFrame(micAnimationRef.current)
+      }
+      if (audioContextRef.current) {
+        audioContextRef.current.close()
+      }
+    }
+  }, [micEnabled, selectedMic, isRecording])
 
   // Timer for recording duration
   useEffect(() => {
@@ -852,6 +918,25 @@ function App() {
                     {micEnabled ? <Mic className="w-5 h-5" /> : <MicOff className="w-5 h-5" />}
                   </button>
                 </div>
+                {/* Microphone Level Indicator */}
+                {micEnabled && !isRecording && (
+                  <div className="mt-2">
+                    <div className="flex items-center gap-2">
+                      <div className="flex-1 h-2 bg-slate-700 rounded-full overflow-hidden">
+                        <div 
+                          className={`h-full transition-all duration-75 rounded-full ${
+                            micLevel > 0.6 ? 'bg-red-500' : micLevel > 0.3 ? 'bg-yellow-500' : 'bg-green-500'
+                          }`}
+                          style={{ width: `${Math.min(micLevel * 100 * 2, 100)}%` }}
+                        />
+                      </div>
+                      <span className="text-xs text-gray-400 w-8">{Math.round(micLevel * 100)}%</span>
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1">
+                      {micLevel > 0.05 ? 'Microphone active' : 'Speak to test microphone'}
+                    </p>
+                  </div>
+                )}
               </div>
 
               {/* Output Resolution */}
