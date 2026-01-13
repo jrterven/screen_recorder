@@ -152,6 +152,13 @@ function App() {
     }
   }, [cameraEnabled, selectedCamera])
 
+  // Ensure camera preview is connected when stream is available
+  useEffect(() => {
+    if (cameraStream && cameraPreviewRef.current && !isRecording) {
+      cameraPreviewRef.current.srcObject = cameraStream
+    }
+  }, [cameraStream, isRecording])
+
   // Timer for recording duration
   useEffect(() => {
     if (isRecording && !isPaused) {
