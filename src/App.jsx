@@ -699,6 +699,25 @@ function App() {
     }
   }
 
+  // Download both screen and camera recordings
+  const downloadBothRecordings = async () => {
+    if (!recordedBlob || !cameraRecordedBlob) return
+    
+    setIsConverting(true)
+    setConversionProgress('Downloading both recordings...')
+    
+    try {
+      // Download screen recording
+      await downloadRecording()
+      // Small delay between downloads
+      await new Promise(resolve => setTimeout(resolve, 500))
+      // Download camera recording
+      await downloadCameraRecording()
+    } catch (err) {
+      console.error('Error downloading both:', err)
+    }
+  }
+
   // Synchronized play/pause for both videos
   const toggleSyncPlayback = () => {
     const screenVideo = recordedVideoRef.current
@@ -1067,35 +1086,41 @@ function App() {
                 Start Recording
               </button>
             ) : (
-              <>
-                {!isPaused ? (
-                  <button
-                    onClick={pauseRecording}
-                    className="flex items-center gap-2 bg-yellow-500 hover:bg-yellow-600 text-black px-6 py-3 rounded-full font-semibold transition-colors"
-                  >
-                    <Pause className="w-5 h-5" />
-                    Pause
-                  </button>
-                ) : (
-                  <button
-                    onClick={resumeRecording}
-                    className="flex items-center gap-2 bg-green-500 hover:bg-green-600 text-white px-6 py-3 rounded-full font-semibold transition-colors"
-                  >
-                    <Play className="w-5 h-5" />
-                    Resume
-                  </button>
-                )}
+              <div className="flex flex-col items-center gap-4 w-full">
+                {/* Big Stop Button at top */}
                 <button
                   onClick={stopRecording}
-                  className="flex items-center gap-2 bg-slate-700 hover:bg-slate-600 text-white px-6 py-3 rounded-full font-semibold transition-colors"
+                  className="flex items-center justify-center gap-3 bg-red-600 hover:bg-red-700 text-white px-12 py-4 rounded-full font-bold text-xl transition-colors shadow-lg shadow-red-600/40 w-full max-w-md"
                 >
-                  <Square className="w-5 h-5 fill-current" />
-                  Stop Recording
+                  <Square className="w-7 h-7 fill-current" />
+                  STOP RECORDING
                 </button>
-              </>
+                
+                {/* Pause/Resume below */}
+                <div className="flex gap-4">
+                  {!isPaused ? (
+                    <button
+                      onClick={pauseRecording}
+                      className="flex items-center gap-2 bg-yellow-500 hover:bg-yellow-600 text-black px-6 py-2 rounded-full font-semibold transition-colors"
+                    >
+                      <Pause className="w-5 h-5" />
+                      Pause
+                    </button>
+                  ) : (
+                    <button
+                      onClick={resumeRecording}
+                      className="flex items-center gap-2 bg-green-500 hover:bg-green-600 text-white px-6 py-2 rounded-full font-semibold transition-colors"
+                    >
+                      <Play className="w-5 h-5" />
+                      Resume
+                    </button>
+                  )}
+                </div>
+              </div>
             )}
 
-            {recordedBlob && !isRecording && (
+            {/* Single download button for screen only */}
+            {recordedBlob && !cameraRecordedBlob && !isRecording && (
               <button
                 onClick={downloadRecording}
                 disabled={isConverting}
@@ -1109,27 +1134,28 @@ function App() {
                 ) : (
                   <>
                     <Download className="w-5 h-5" />
-                    Download Screen as {outputFormat.toUpperCase()}
+                    Download as {outputFormat.toUpperCase()}
                   </>
                 )}
               </button>
             )}
 
-            {cameraRecordedBlob && !isRecording && (
+            {/* Single button to download both recordings */}
+            {recordedBlob && cameraRecordedBlob && !isRecording && (
               <button
-                onClick={downloadCameraRecording}
+                onClick={downloadBothRecordings}
                 disabled={isConverting}
-                className="flex items-center gap-2 bg-purple-500 hover:bg-purple-600 text-white px-8 py-3 rounded-full font-semibold transition-colors shadow-lg shadow-purple-500/30 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex items-center gap-2 bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white px-10 py-4 rounded-full font-bold text-lg transition-colors shadow-lg shadow-purple-500/30 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isConverting ? (
                   <>
-                    <Loader2 className="w-5 h-5 animate-spin" />
+                    <Loader2 className="w-6 h-6 animate-spin" />
                     {conversionProgress || 'Converting...'}
                   </>
                 ) : (
                   <>
-                    <Camera className="w-5 h-5" />
-                    Download Camera as {outputFormat.toUpperCase()}
+                    <Download className="w-6 h-6" />
+                    Download Both Recordings
                   </>
                 )}
               </button>
