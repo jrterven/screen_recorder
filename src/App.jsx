@@ -59,7 +59,7 @@ function App() {
   const [recordingTime, setRecordingTime] = useState(0)
   const [error, setError] = useState(null)
   const [screenStream, setScreenStream] = useState(null)
-  const [selectedResolution, setSelectedResolution] = useState('1080p')
+  const [selectedResolution, setSelectedResolution] = useState('original')
   const [outputFormat, setOutputFormat] = useState('mp4')
   const [isConverting, setIsConverting] = useState(false)
   const [conversionProgress, setConversionProgress] = useState('')
