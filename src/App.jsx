@@ -72,6 +72,7 @@ function App() {
   const [cameraStream, setCameraStream] = useState(null)
   const [cameraRecordedBlob, setCameraRecordedBlob] = useState(null)
   const [cameraRecordedUrl, setCameraRecordedUrl] = useState(null)
+  const [isSyncPlaying, setIsSyncPlaying] = useState(false)
 
   const mediaRecorderRef = useRef(null)
   const cameraRecorderRef = useRef(null)
@@ -80,6 +81,7 @@ function App() {
   const timerRef = useRef(null)
   const videoPreviewRef = useRef(null)
   const recordedVideoRef = useRef(null)
+  const cameraRecordedVideoRef = useRef(null)
   const cameraPreviewRef = useRef(null)
   const canvasRef = useRef(null)
 
@@ -624,6 +626,35 @@ function App() {
     }
   }
 
+  // Synchronized play/pause for both videos
+  const toggleSyncPlayback = () => {
+    const screenVideo = recordedVideoRef.current
+    const cameraVideo = cameraRecordedVideoRef.current
+    
+    if (!screenVideo || !cameraVideo) return
+    
+    if (isSyncPlaying) {
+      screenVideo.pause()
+      cameraVideo.pause()
+      setIsSyncPlaying(false)
+    } else {
+      // Reset to start if at end
+      if (screenVideo.ended) screenVideo.currentTime = 0
+      if (cameraVideo.ended) cameraVideo.currentTime = 0
+      
+      // Sync time and play both
+      cameraVideo.currentTime = screenVideo.currentTime
+      screenVideo.play()
+      cameraVideo.play()
+      setIsSyncPlaying(true)
+    }
+  }
+
+  // Handle video end
+  const handleVideoEnd = () => {
+    setIsSyncPlaying(false)
+  }
+
   return (
     <div className="min-h-screen p-8">
       <div className="max-w-4xl mx-auto">
@@ -651,26 +682,54 @@ function App() {
           {/* Preview Area */}
           {/* Show side-by-side when both screen and camera recordings exist */}
           {recordedUrl && cameraRecordedUrl && !isRecording ? (
-            <div className="grid grid-cols-2 gap-4 mb-6">
-              <div className="relative bg-black rounded-xl overflow-hidden aspect-video">
-                <video
-                  ref={recordedVideoRef}
-                  src={recordedUrl}
-                  controls
-                  className="w-full h-full object-contain"
-                />
-                <div className="absolute top-2 left-2 bg-blue-500/80 text-white text-xs px-2 py-1 rounded">
-                  Screen Recording
-                </div>
+            <div className="mb-6">
+              {/* Sync Play Button */}
+              <div className="flex justify-center mb-4">
+                <button
+                  onClick={toggleSyncPlayback}
+                  className={`flex items-center gap-2 px-6 py-2 rounded-full font-semibold transition-colors ${
+                    isSyncPlaying 
+                      ? 'bg-yellow-500 hover:bg-yellow-600 text-black' 
+                      : 'bg-green-500 hover:bg-green-600 text-white'
+                  }`}
+                >
+                  {isSyncPlaying ? (
+                    <>
+                      <Pause className="w-5 h-5" />
+                      Pause Both
+                    </>
+                  ) : (
+                    <>
+                      <Play className="w-5 h-5" />
+                      Play Both (Synced)
+                    </>
+                  )}
+                </button>
               </div>
-              <div className="relative bg-black rounded-xl overflow-hidden aspect-video">
-                <video
-                  src={cameraRecordedUrl}
-                  controls
-                  className="w-full h-full object-contain"
-                />
-                <div className="absolute top-2 left-2 bg-purple-500/80 text-white text-xs px-2 py-1 rounded">
-                  Camera Recording
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div className="relative bg-black rounded-xl overflow-hidden aspect-video">
+                  <video
+                    ref={recordedVideoRef}
+                    src={recordedUrl}
+                    onEnded={handleVideoEnd}
+                    className="w-full h-full object-contain"
+                  />
+                  <div className="absolute top-2 left-2 bg-blue-500/80 text-white text-xs px-2 py-1 rounded">
+                    Screen Recording
+                  </div>
+                </div>
+                <div className="relative bg-black rounded-xl overflow-hidden aspect-video">
+                  <video
+                    ref={cameraRecordedVideoRef}
+                    src={cameraRecordedUrl}
+                    muted
+                    onEnded={handleVideoEnd}
+                    className="w-full h-full object-contain"
+                  />
+                  <div className="absolute top-2 left-2 bg-purple-500/80 text-white text-xs px-2 py-1 rounded">
+                    Camera Recording (Audio from Screen)
+                  </div>
                 </div>
               </div>
             </div>
