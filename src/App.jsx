@@ -39,8 +39,8 @@ const RESOLUTIONS = [
 ]
 
 const OUTPUT_FORMATS = [
-  { value: 'mp4', label: 'MP4', description: 'Best compatibility' },
   { value: 'webm', label: 'WebM', description: 'Web optimized' },
+  { value: 'mp4', label: 'MP4', description: 'Best compatibility' },
   { value: 'mov', label: 'MOV', description: 'Apple devices' },
   { value: 'mkv', label: 'MKV', description: 'High quality' },
   { value: 'avi', label: 'AVI', description: 'Legacy format' }
@@ -60,7 +60,7 @@ function App() {
   const [error, setError] = useState(null)
   const [screenStream, setScreenStream] = useState(null)
   const [selectedResolution, setSelectedResolution] = useState('original')
-  const [outputFormat, setOutputFormat] = useState('mp4')
+  const [outputFormat, setOutputFormat] = useState('webm')
   const [isConverting, setIsConverting] = useState(false)
   const [conversionProgress, setConversionProgress] = useState('')
   const [cameras, setCameras] = useState([])
